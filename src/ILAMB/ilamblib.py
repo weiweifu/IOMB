@@ -513,9 +513,14 @@ def CellAreas(lat, lon, lat_bnds=None, lon_bnds=None):
     x[1:-1] = 0.5 * (lon[1:] + lon[:-1])
     x[0] = lon[0] - 0.5 * (lon[1] - lon[0])
     x[-1] = lon[-1] + 0.5 * (lon[-1] - lon[-2])
-    if x.max() > 181:
-        x -= 180
-    x = x.clip(-180, 180)
+    # if x.max() > 181:
+    #     x -= 180
+    # x = x.clip(-180, 180)
+    if x.max() > 360.01:
+        x -= 360
+    if x.min() < 0.0
+        x += 360
+    x = x.clip(0, 360)
     x *= np.pi / 180.0
 
     y = np.zeros(lat.size + 1)
@@ -1269,8 +1274,10 @@ def ComposeSpatialGrids(var1, var2):
     def _make_bnds(x):
         bnds = np.zeros(x.size + 1)
         bnds[1:-1] = 0.5 * (x[1:] + x[:-1])
-        bnds[0] = max(x[0] - 0.5 * (x[1] - x[0]), -180)
-        bnds[-1] = min(x[-1] + 0.5 * (x[-1] - x[-2]), +180)
+        # bnds[0] = max(x[0] - 0.5 * (x[1] - x[0]), -180)
+        # bnds[-1] = min(x[-1] + 0.5 * (x[-1] - x[-2]), +180)
+        bnds[0] = max(x[0] - 0.5 * (x[1] - x[0]), 0)
+        bnds[-1] = min(x[-1] + 0.5 * (x[-1] - x[-2]), +360)
         return bnds
 
     lat1_bnd = _make_bnds(var1.lat)
@@ -2422,7 +2429,8 @@ def MakeComparable(ref, com, **keywords):
     # Process keywords
     clip_ref = keywords.get("clip_ref", False)
     window = keywords.get("window", 0.0)
-    extents = keywords.get("extents", np.asarray([[-90.0, +90.0], [-180.0, +180.0]]))
+    # extents = keywords.get("extents", np.asarray([[-90.0, +90.0], [-180.0, +180.0]]))
+    extents = keywords.get("extents", np.asarray([[-90.0, +90.0], [0.0, +360.0]]))
     logstring = keywords.get("logstring", "")
     prune_sites = keywords.get("prune_sites", False)
     site_atol = keywords.get("site_atol", 0.25)
@@ -2558,8 +2566,10 @@ def MakeComparable(ref, com, **keywords):
                     lat_bnds[1] if diff[0, 1] >= 5.0 else +90,
                 ],
                 lon=[
-                    lon_bnds[0] if diff[1, 0] >= 5.0 else -180.0,
-                    lon_bnds[1] if diff[1, 1] >= 5.0 else +180,
+                    # lon_bnds[0] if diff[1, 0] >= 5.0 else -180.0,
+                    # lon_bnds[1] if diff[1, 1] >= 5.0 else +180,
+                    lon_bnds[0] if diff[1, 0] >= 5.0 else 0.0,
+                    lon_bnds[1] if diff[1, 1] >= 5.0 else +360,
                 ],
             )
             shp = np.asarray(np.copy(ref.data.shape), dtype=int)
@@ -2583,8 +2593,10 @@ def MakeComparable(ref, com, **keywords):
                     lat_bnds[1] if diff[0, 1] >= 5.0 else +90,
                 ],
                 lon=[
-                    lon_bnds[0] if diff[1, 0] >= 5.0 else -180.0,
-                    lon_bnds[1] if diff[1, 1] >= 5.0 else +180,
+                    # lon_bnds[0] if diff[1, 0] >= 5.0 else -180.0,
+                    # lon_bnds[1] if diff[1, 1] >= 5.0 else +180,
+                    lon_bnds[0] if diff[1, 0] >= 5.0 else 0.0,
+                    lon_bnds[1] if diff[1, 1] >= 5.0 else +360,
                 ],
             )
             shp = np.asarray(np.copy(com.data.shape), dtype=int)
