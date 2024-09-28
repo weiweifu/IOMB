@@ -12,18 +12,22 @@ from ILAMB.Regions import Regions
 
 
 def _shiftLon(lon):
-    return (lon <= 180) * lon + (lon > 180) * (lon - 360) + (lon < -180) * 360
+    # return (lon <= 180) * lon + (lon > 180) * (lon - 360) + (lon < -180) * 360
+    return (lon < 360) * (lon + 360) % 360 + (lon >= 360) * 360
 
 
 def _shiftFirstColumnToDateline(lon, lon_bnds=None, data=None, area=None):
-    shift = lon.argmin()
+    # shift = lon.argmin()
+    shift = abs(lon).argmin()
     lon = np.roll(lon, -shift)
     if lon_bnds is not None:
         lon_bnds = np.roll(lon_bnds, -shift, axis=0)
         if lon_bnds[0, 0] > lon_bnds[0, 1]:
-            lon_bnds[0, 0] = max(lon_bnds[0, 0] - 360, -180)
+            # lon_bnds[0, 0] = max(lon_bnds[0, 0] - 360, -180)
+            lon_bnds[0, 0] = max(lon_bnds[0, 0] , 0)
         if lon_bnds[-1, 1] < lon_bnds[-1, 0]:
-            lon_bnds[-1, 1] = min(lon_bnds[-1, 1] + 360, +180)
+            # lon_bnds[-1, 1] = min(lon_bnds[-1, 1] + 360, +180)
+            lon_bnds[-1, 1] = min(lon_bnds[-1, 1], +360)
     if data is not None:
         data = np.roll(data, -shift, axis=-1)
     if area is not None:
@@ -37,7 +41,9 @@ def _createBnds(x):
     x_bnds[+1:, 0] = 0.5 * (x[:-1] + x[+1:])
     x_bnds[:-1, 1] = 0.5 * (x[:-1] + x[+1:])
     if x.size == 1:
-        x_bnds[...] = x
+        # x_bnds[...] = x
+        x_bnds[0,0] = x - x * 0.01
+        x_bnds[0,1] = x + x * 0.01
     else:
         x_bnds[0, 0] = x[0] - 0.5 * (x[1] - x[0])
         x_bnds[-1, 1] = x[-1] + 0.5 * (x[-1] - x[-2])
@@ -232,6 +238,7 @@ class Variable:
                     self.area = self.area[::-1, :]
 
             # Shift possible values on [0,360] to [-180,180]
+            # Shift possible values on [-180,180] to [0,360]
             if self.lon is not None:
                 self.lon = _shiftLon(self.lon)
             if self.lon_bnds is not None:
@@ -251,7 +258,8 @@ class Variable:
 
             # Fix potential problems with rolling the axes of the lon_bnds
             self.lat_bnds = self.lat_bnds.clip(-90, +90)
-            self.lon_bnds = self.lon_bnds.clip(-180, +180)
+            # self.lon_bnds = self.lon_bnds.clip(-180, +180)
+            self.lon_bnds = self.lon_bnds.clip(0, +360)
 
             # Make sure that the value lies within the bounds
             assert np.all(
@@ -926,8 +934,10 @@ class Variable:
         def _make_bnds(x):
             bnds = np.zeros(x.size + 1)
             bnds[1:-1] = 0.5 * (x[1:] + x[:-1])
-            bnds[0] = max(x[0] - 0.5 * (x[1] - x[0]), -180)
-            bnds[-1] = min(x[-1] + 0.5 * (x[-1] - x[-2]), +180)
+            # bnds[0] = max(x[0] - 0.5 * (x[1] - x[0]), -180)
+            # bnds[-1] = min(x[-1] + 0.5 * (x[-1] - x[-2]), +180)
+            bnds[0] = max(x[0] - 0.5 * (x[1] - x[0]), 0)
+            bnds[-1] = min(x[-1] + 0.5 * (x[-1] - x[-2]), +360)
             return bnds
 
         assert Unit(var.unit) == Unit(self.unit)
@@ -1374,8 +1384,10 @@ class Variable:
                 ]
                 dx = percent_pad * (extents[1] - extents[0])
                 dy = percent_pad * (extents[3] - extents[2])
-                extents[0] = max(extents[0] - dx, -180)
-                extents[1] = min(extents[1] + dx, +180)
+                # extents[0] = max(extents[0] - dx, -180)
+                # extents[1] = min(extents[1] + dx, +180)
+                extents[0] = max(extents[0] - dx, 0)
+                extents[1] = min(extents[1] + dx, +360)
                 extents[2] = max(extents[2] - dy, -90)
                 extents[3] = min(extents[3] + dy, +90)
                 lon_mid = 0.5 * (extents[0] + extents[1])
@@ -1413,8 +1425,10 @@ class Variable:
                 ]
                 dx = percent_pad * (extents[1] - extents[0])
                 dy = percent_pad * (extents[3] - extents[2])
-                extents[0] = max(extents[0] - dx, -180)
-                extents[1] = min(extents[1] + dx, +180)
+                # extents[0] = max(extents[0] - dx, -180)
+                # extents[1] = min(extents[1] + dx, +180)
+                extents[0] = max(extents[0] - dx, 0)
+                extents[1] = min(extents[1] + dx, +360)
                 extents[2] = max(extents[2] - dy, -90)
                 extents[3] = min(extents[3] + dy, +90)
                 lon_mid = 0.5 * (extents[0] + extents[1])
@@ -1424,21 +1438,38 @@ class Variable:
             aspect_ratio = (extents[3] - extents[2]) / (extents[1] - extents[0])
             if (extents[1] - extents[0]) > 320:
                 if np.allclose(extents[2], -90) and extents[3] <= 0:
-                    proj = ccrs.Orthographic(central_latitude=-90, central_longitude=0)
+                    # proj = ccrs.Orthographic(central_latitude=-90, central_longitude=0)
+                    proj = ccrs.Orthographic(central_latitude=-90, central_longitude=180)
                     aspect_ratio = 1.0
                 elif extents[3] > 75 and extents[2] >= 0:
-                    proj = ccrs.Orthographic(central_latitude=+90, central_longitude=0)
+                    # proj = ccrs.Orthographic(central_latitude=+90, central_longitude=0)
+                    proj = ccrs.Orthographic(central_latitude=+90, central_longitude=180)
                     aspect_ratio = 1.0
                 elif (extents[3] - extents[2]) > 140:
-                    proj = ccrs.Robinson(central_longitude=0)
-                    extents = [-180, 180, -90, 90]
+                    # proj = ccrs.Robinson(central_longitude=0)
+                    # extents = [-180, 180, -90, 90]
+                    proj = ccrs.Robinson(central_longitude=180)
+                    extents = [0, 360, -90, 90]
                     aspect_ratio = 0.5
-                    lon_mid = 0.0
+                    # lon_mid = 0.0
+                    lon_mid = 180.0
 
             # make the plot
             w = 7.5
             h = w * aspect_ratio
             fig, ax = plt.subplots(figsize=(w, h), subplot_kw={"projection": proj})
+            # add grid labels to the map
+            ax.coastlines()
+            ax.set_xticks([0, 60, 120, 180, 240, 300, 360], crs=ccrs.PlateCarree())
+            ax.set_yticks([-60, -30, 0, 30, 60], crs=ccrs.PlateCarree())
+            lon_formatter = LongitudeFormatter(zero_direction_label=True)
+            lat_formatter = LatitudeFormatter()
+            ax.xaxis.set_major_formatter(lon_formatter)
+            ax.yaxis.set_major_formatter(lat_formatter)
+            gl = ax.gridlines(crs=proj,linestyle='--',linewidth=0.6, color='gray', alpha=0.5,draw_labels=False)
+            gl.xlabel_style = {'size': 14, 'color': 'gray'}
+            gl.ylabel_style = {'size': 14, 'color': 'gray'}            
+            
             if self.ndata is None:
                 lat = np.hstack([self.lat_bnds[:, 0], self.lat_bnds[-1, -1]])
                 lon = np.hstack([self.lon_bnds[:, 0], self.lon_bnds[-1, -1]])
@@ -1464,16 +1495,18 @@ class Variable:
                 )
             ax.add_feature(
                 cfeature.NaturalEarthFeature(
-                    "physical", "land", "110m", edgecolor="face", facecolor="0.875"
+                    # "physical", "land", "110m", edgecolor="face", facecolor="0.875"
+                    "physical", "land", "110m", edgecolor="face", facecolor="0.750"
+
                 ),
                 zorder=-1,
             )
-            ax.add_feature(
-                cfeature.NaturalEarthFeature(
-                    "physical", "ocean", "110m", edgecolor="face", facecolor="0.750"
-                ),
-                zorder=-1,
-            )
+            # ax.add_feature(
+            #    cfeature.NaturalEarthFeature(
+            #        "physical", "ocean", "110m", edgecolor="face", facecolor="0.750"
+            #    ),
+            #    zorder=-1,
+            # )
             ax.set_extent(extents, ccrs.PlateCarree())
             if cbar:
                 fig.colorbar(p, orientation="horizontal", pad=0.05, label=label)
