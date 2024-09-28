@@ -32,7 +32,7 @@ def _skipFile(pathName, altvars, lats, lons, same_site_epsilon):
                     continue
                 X = dset.variables["lat"][...]
                 Y = dset.variables["lon"][...]
-                Y = (Y <= 180) * Y + (Y > 180) * (Y - 360) + (Y < -180) * 360
+                # Y = (Y <= 180) * Y + (Y > 180) * (Y - 360) + (Y < -180) * 360
                 if np.sqrt((X - lats[0]) ** 2 + (Y - lons[0]) ** 2) > same_site_epsilon:
                     return True
 
@@ -96,7 +96,8 @@ class ModelResult:
         self.land_area = None
         self.variables = None
         self.names = None
-        self.extents = np.asarray([[-90.0, +90.0], [-180.0, +180.0]])
+        # self.extents = np.asarray([[-90.0, +90.0], [-180.0, +180.0]])
+        self.extents = np.asarray([[-90.0, +90.0], [0, +360.0]])
         self.paths = paths
         self.description = description
         self.group = group
@@ -211,11 +212,11 @@ class ModelResult:
                         continue
                     if lon.ndim < 1 or lon.ndim > 2:
                         continue
-                    lon = (
-                        (lon <= 180) * lon
-                        + (lon > 180) * (lon - 360)
-                        + (lon < -180) * 360
-                    )
+                    # lon = (
+                    #     (lon <= 180) * lon
+                    #     + (lon > 180) * (lon - 360)
+                    #     + (lon < -180) * 360
+                    # )
                     self.extents[1, 0] = max(self.extents[1, 0], lon.min())
                     self.extents[1, 1] = min(self.extents[1, 1], lon.max())
 
@@ -225,10 +226,14 @@ class ModelResult:
             self.extents[0, 0] = -90.0
         if self.extents[0, 1] > (+90.0 - eps):
             self.extents[0, 1] = +90.0
-        if self.extents[1, 0] < (-180.0 + eps):
-            self.extents[1, 0] = -180.0
-        if self.extents[1, 1] > (+180.0 - eps):
-            self.extents[1, 1] = +180.0
+        # if self.extents[1, 0] < (-180.0 + eps):
+        #     self.extents[1, 0] = -180.0
+        # if self.extents[1, 1] > (+180.0 - eps):
+        #     self.extents[1, 1] = +180.0
+        if self.extents[1, 0] < (0 + eps):
+            self.extents[1, 0] = 0
+        if self.extents[1, 1] > (+360.0 - eps):
+            self.extents[1, 1] = +360.0
         self.variables = variables
         self.names = names
 
@@ -236,7 +241,8 @@ class ModelResult:
         """Looks in the model output for cell areas as well as land fractions."""
 
         def _shiftLon(lon):
-            return (lon <= 180) * lon + (lon > 180) * (lon - 360) + (lon < -180) * 360
+            # return (lon <= 180) * lon + (lon > 180) * (lon - 360) + (lon < -180) * 360
+            return (lon + 360) % 360
 
         # Are there cell areas associated with this model?
         area_name = None
@@ -260,9 +266,11 @@ class ModelResult:
                 s = y.mean(axis=1).argmin()
                 y = np.roll(_shiftLon(y), -s, axis=0)
                 if y[0, 0] > y[0, 1]:
-                    y[0, 0] = -180.0
+                    # y[0, 0] = -180.0
+                    y[0, 0] = 0
                 if y[-1, 0] > y[-1, 1]:
-                    y[-1, 1] = +180.0
+                    # y[-1, 1] = +180.0
+                    y[-1, 1] = +360.0
             self.cell_areas = il.CellAreas(None, None, lat_bnds=x, lon_bnds=y)
 
         # Now we do the same for land fractions
