@@ -173,7 +173,8 @@ class Confrontation(object):
         self.relationships = keywords.get("relationships", None)
         self.df_errs = keywords.get("df_errs", None)
         self.keywords = keywords
-        self.extents = np.asarray([[-90.0, +90.0], [-180.0, +180.0]])
+        # self.extents = np.asarray([[-90.0, +90.0], [-180.0, +180.0]])
+        self.extents = np.asarray([[-90.0, +90.0], [0.0, +360.0]])
         self.study_limits = []
         self.cweight = 1
         self.scale_factor = float(keywords.get("scale_factor", 1.0))
