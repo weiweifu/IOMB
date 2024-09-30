@@ -516,9 +516,9 @@ def CellAreas(lat, lon, lat_bnds=None, lon_bnds=None):
     # if x.max() > 181:
     #     x -= 180
     # x = x.clip(-180, 180)
-    if x.max() > 360.01:
+    if x.max() >= 360.0:
         x -= 360
-    if x.min() < 0.0
+    if x.min() <= 0.0:
         x += 360
     x = x.clip(0, 360)
     x *= np.pi / 180.0
@@ -1152,12 +1152,20 @@ def FromNetCDF4(
             assert lat.shape == lon.shape
 
             # Create the grid
-            res = 1.0
+            # res = 1.0
+            # lat_bnds = np.arange(
+            #     round(lat.min(), 0), round(lat.max(), 0) + res / 2.0, res
+            # )
+            # lon_bnds = np.arange(
+            #     round(lon.min(), 0), round(lon.max(), 0) + res / 2.0, res
+            # )
+            res1 = (lat.max() - lat.min())/lat.shape[0]
+            res2 = (lon.max() - lon.min())/lon.shape[1]
             lat_bnds = np.arange(
-                round(lat.min(), 0), round(lat.max(), 0) + res / 2.0, res
+                round(lat.min(), 0), round(lat.max(), 0) + res1 / 2.0, res1
             )
             lon_bnds = np.arange(
-                round(lon.min(), 0), round(lon.max(), 0) + res / 2.0, res
+                round(lon.min(), 0), round(lon.max(), 0) + res2 / 2.0, res2
             )
             lats = 0.5 * (lat_bnds[:-1] + lat_bnds[1:])
             lons = 0.5 * (lon_bnds[:-1] + lon_bnds[1:])
