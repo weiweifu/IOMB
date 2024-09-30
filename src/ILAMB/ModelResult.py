@@ -33,6 +33,7 @@ def _skipFile(pathName, altvars, lats, lons, same_site_epsilon):
                 X = dset.variables["lat"][...]
                 Y = dset.variables["lon"][...]
                 # Y = (Y <= 180) * Y + (Y > 180) * (Y - 360) + (Y < -180) * 360
+                Y = (Y < 360) * (Y + 360) % 360 + (Y >= 360) * 360
                 if np.sqrt((X - lats[0]) ** 2 + (Y - lons[0]) ** 2) > same_site_epsilon:
                     return True
 
@@ -217,6 +218,10 @@ class ModelResult:
                     #     + (lon > 180) * (lon - 360)
                     #     + (lon < -180) * 360
                     # )
+                    lon = (
+                        (lon < 360) * (lon + 360) % 360
+                        + (lon >= 360) *360
+                          )
                     self.extents[1, 0] = max(self.extents[1, 0], lon.min())
                     self.extents[1, 1] = min(self.extents[1, 1], lon.max())
 
@@ -242,7 +247,7 @@ class ModelResult:
 
         def _shiftLon(lon):
             # return (lon <= 180) * lon + (lon > 180) * (lon - 360) + (lon < -180) * 360
-            return (lon + 360) % 360
+            return (lon < 360) * (lon + 360) % 360 + (lon >= 360) * 360
 
         # Are there cell areas associated with this model?
         area_name = None
@@ -265,6 +270,7 @@ class ModelResult:
                 y = f.variables["lon_bnds"][...]
                 s = y.mean(axis=1).argmin()
                 y = np.roll(_shiftLon(y), -s, axis=0)
+                y = _shiftLon(y) # add by wwfu
                 if y[0, 0] > y[0, 1]:
                     # y[0, 0] = -180.0
                     y[0, 0] = 0
