@@ -1166,7 +1166,8 @@ def FromNetCDF4(
                 (lat[ilat, ilon] - lats[:, np.newaxis]) ** 2
                 + (lon[ilat, ilon] - lons[np.newaxis, :]) ** 2
             )
-            v = v[..., ilat, ilon]
+            # v = v[..., ilat, ilon]
+            v = np.ma.masked_invalid(v[..., ilat, ilon]) # add by wwfu
             v = np.ma.masked_array(v, mask=v.mask + (r > 2 * res))
             lat = lats
             lon = lons

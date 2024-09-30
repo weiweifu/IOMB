@@ -657,7 +657,8 @@ def WorkPost(M, C, W, S, verbose=False, skip_plots=False):
 
 
 def RestrictiveModelExtents(M, eps=2.0):
-    extents0 = np.asarray([[-90.0, +90.0], [-180.0, +180.0]])
+    # extents0 = np.asarray([[-90.0, +90.0], [-180.0, +180.0]])
+    extents0 = np.asarray([[-90.0, +90.0], [0.0, +360.0]])
     extents = extents0.copy()
     for m in M:
         if not hasattr(m, "extents"):
