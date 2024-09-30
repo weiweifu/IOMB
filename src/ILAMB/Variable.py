@@ -9,6 +9,7 @@ from pylab import get_cmap
 from ILAMB import ilamblib as il
 from ILAMB.constants import bnd_months, mid_months
 from ILAMB.Regions import Regions
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
 
 def _shiftLon(lon):

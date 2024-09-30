@@ -1152,13 +1152,7 @@ def FromNetCDF4(
             assert lat.shape == lon.shape
 
             # Create the grid
-            # res = 1.0
-            # lat_bnds = np.arange(
-            #     round(lat.min(), 0), round(lat.max(), 0) + res / 2.0, res
-            # )
-            # lon_bnds = np.arange(
-            #     round(lon.min(), 0), round(lon.max(), 0) + res / 2.0, res
-            # )
+            res = 1.0
             res1 = (lat.max() - lat.min())/lat.shape[0]
             res2 = (lon.max() - lon.min())/lon.shape[1]
             lat_bnds = np.arange(
@@ -2305,7 +2299,7 @@ def AnalysisMeanStateSpace(ref, com, **keywords):
         del rmse, crmse, rmse_score_map
 
     # RMSE based on annual cycle
-    if (not skip_rmse) and (rmse_score_basis == "cycle"):
+    if (not skip_rmse) and (rmse_score_basis == "cycle") and (not skip_cycle):
         ref_cycle = REF.annualCycle()
         ref_dtcycle = deepcopy(ref_cycle)
         com_cycle = COM.annualCycle()
@@ -2693,6 +2687,17 @@ def MakeComparable(ref, com, **keywords):
                 msg = "%s Datasets have a different layering scheme" % logstring
                 logger.debug(msg)
                 raise VarsNotComparable()
+    else: 
+      # ref is not layered
+      if com.layered:
+        # com.depth = ref.depth
+        # com.depth_bnds = ref.depth_bnds
+        # shp.insert(insert, 1)
+        com.data = com.data[...,0,:,:] # discard the depth dimension
+        com.layered = False
+      else: # com is not layered
+        msg = "Both Datasets are not layered"
+        logger.debug(msg)
 
     # Convert the comparison to the units of the reference
     com = com.convert(ref.unit)
