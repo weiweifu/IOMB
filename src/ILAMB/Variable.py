@@ -14,12 +14,12 @@ from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 
 def _shiftLon(lon):
     # return (lon <= 180) * lon + (lon > 180) * (lon - 360) + (lon < -180) * 360
-    return (lon < 360) * (lon + 360) % 360 + (lon >= 360) * 360
+    return (lon < 360) * (lon + 360) % 360 + (lon >= 360) * 360 if np.any(lon < 0) else lon
 
 
 def _shiftFirstColumnToDateline(lon, lon_bnds=None, data=None, area=None):
-    # shift = lon.argmin()
-    shift = abs(lon).argmin()
+    shift = lon.argmin()
+    # shift = lon.size - lon[lon>=0].size # get index of the minimum positive value
     lon = np.roll(lon, -shift)
     if lon_bnds is not None:
         lon_bnds = np.roll(lon_bnds, -shift, axis=0)
@@ -34,7 +34,6 @@ def _shiftFirstColumnToDateline(lon, lon_bnds=None, data=None, area=None):
     if area is not None:
         area = np.roll(area, -shift, axis=-1)
     return lon, lon_bnds, data, area
-
 
 def _createBnds(x):
     x = np.asarray(x)
@@ -225,7 +224,9 @@ class Variable:
             # Shift possible values on [0,360] to [-180,180]
             if self.lon is not None:
                 self.lon = _shiftLon(self.lon)
-            if self.lon_bnds is not None:
+            # if self.lon_bnds is not None:
+            # if lon_bnds falls in [-180 180] create a new bound later
+            if self.lon_bnds is not None and np.all(self.lon_bnds >= 0): # changed by wfu
                 self.lon_bnds = _shiftLon(self.lon_bnds)
 
         else:
@@ -242,7 +243,9 @@ class Variable:
             # Shift possible values on [-180,180] to [0,360]
             if self.lon is not None:
                 self.lon = _shiftLon(self.lon)
-            if self.lon_bnds is not None:
+            # if self.lon_bnds is not None:
+            # if lon_bnds falls in [-180 180] create a new bound later
+            if self.lon_bnds is not None and np.all(self.lon_bnds >= 0):
                 self.lon_bnds = _shiftLon(self.lon_bnds)
 
             # Shift first column of data to the international dateline
@@ -256,6 +259,8 @@ class Variable:
                 self.lat_bnds = _createBnds(self.lat)
             if self.lon_bnds is None:
                 self.lon_bnds = _createBnds(self.lon)
+            if np.any(self.lon_bnds < 0):
+                self.lon_bnds = _createBnds(self.lon) # lon_bnds [0 360]
 
             # Fix potential problems with rolling the axes of the lon_bnds
             self.lat_bnds = self.lat_bnds.clip(-90, +90)

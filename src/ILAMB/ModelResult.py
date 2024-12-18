@@ -268,15 +268,16 @@ class ModelResult:
                 x = f.variables["lat_bnds"][...]
             with Dataset(self.variables["lon_bnds"][0]) as f:
                 y = f.variables["lon_bnds"][...]
-                s = y.mean(axis=1).argmin()
-                y = np.roll(_shiftLon(y), -s, axis=0)
-                y = _shiftLon(y) # add by wwfu
-                if y[0, 0] > y[0, 1]:
-                    # y[0, 0] = -180.0
-                    y[0, 0] = 0
-                if y[-1, 0] > y[-1, 1]:
-                    # y[-1, 1] = +180.0
-                    y[-1, 1] = +360.0
+                if self.lon.ndim <= 1:  # do not shift in a curvature coordinate
+                  s = y.mean(axis=1).argmin()
+                  y = np.roll(_shiftLon(y), -s, axis=0)
+                  y = _shiftLon(y) # add by wwfu
+                  if y[0, 0] > y[0, 1]:
+                      # y[0, 0] = -180.0
+                      y[0, 0] = 0
+                  if y[-1, 0] > y[-1, 1]:
+                      # y[-1, 1] = +180.0
+                      y[-1, 1] = +360.0
             self.cell_areas = il.CellAreas(None, None, lat_bnds=x, lon_bnds=y)
 
         # Now we do the same for land fractions
