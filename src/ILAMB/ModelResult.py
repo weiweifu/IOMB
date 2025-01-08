@@ -218,10 +218,10 @@ class ModelResult:
                     #     + (lon > 180) * (lon - 360)
                     #     + (lon < -180) * 360
                     # )
-                    lon = (
+                    lon = np.array( ( 
                         (lon < 360) * (lon + 360) % 360
                         + (lon >= 360) *360
-                          )
+                          ), dtype=np.float64)
                     self.extents[1, 0] = max(self.extents[1, 0], lon.min())
                     self.extents[1, 1] = min(self.extents[1, 1], lon.max())
 
@@ -247,7 +247,8 @@ class ModelResult:
 
         def _shiftLon(lon):
             # return (lon <= 180) * lon + (lon > 180) * (lon - 360) + (lon < -180) * 360
-            return (lon < 360) * (lon + 360) % 360 + (lon >= 360) * 360
+            # return (lon < 360) * (lon + 360) % 360 + (lon >= 360) * 360
+            return (lon < 360) * (lon + 360) % 360 + (lon >= 360) * 360 if np.any(lon < 0) else lon
 
         # Are there cell areas associated with this model?
         area_name = None
@@ -268,7 +269,7 @@ class ModelResult:
                 x = f.variables["lat_bnds"][...]
             with Dataset(self.variables["lon_bnds"][0]) as f:
                 y = f.variables["lon_bnds"][...]
-                if self.lon.ndim <= 1:  # do not shift in a curvature coordinate
+                if np.any(y<0):  # shift lon_bnds if in [-180 180],may be problematic for curvature coord
                   s = y.mean(axis=1).argmin()
                   y = np.roll(_shiftLon(y), -s, axis=0)
                   y = _shiftLon(y) # add by wwfu
